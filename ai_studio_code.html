@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrashTracker India - Smart Waste Management</title>
+    
+    <!-- 1. TAILWIND CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. FONTS -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 3. LEAFLET MAPS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- 4. CHART.JS (For Admin Dashboard) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- 5. ICONS (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        /* Custom Scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Map Styles */
+        #hotspotMap, #trackingMap { height: 100%; width: 100%; z-index: 1; }
+        .custom-pin { background: transparent; border: none; }
+        
+        /* Animations */
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fade-in 0.3s ease-in-out; }
+        
+        .hidden-view { display: none !important; }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- ========================================== -->
+    <!-- NAVIGATION (Sticky Top) -->
+    <!-- ========================================== -->
+    <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100" id="mainNav">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="navigateTo('landing')">
+                <div class="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white">
+                    <i data-lucide="leaf"></i>
+                </div>
+                <div class="flex flex-col leading-none">
+                    <span class="font-bold text-lg text-gray-900">TrashTracker</span>
+                    <span class="text-[10px] text-green-600 font-bold uppercase tracking-wider">India</span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="changeLanguage('en')" class="text-xs font-bold px-2 py-1 border rounded hover:bg-gray-100">ENG</button>
+                <button onclick="changeLanguage('hi')" class="text-xs font-bold px-2 py-1 border rounded hover:bg-gray-100">हिंदी</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ========================================== -->
+    <!-- VIEW: LANDING PAGE -->
+    <!-- ========================================== -->
+    <section id="view-landing" class="view-section animate-fade-in">
+        <!-- Hero -->
+        <div class="bg-green-50/50 pt-12 pb-12 text-center px-4">
+            <div class="flex justify-center mb-6">
+                <div class="w-32 h-32 bg-white rounded-full shadow-lg flex items-center justify-center border-4 border-green-100 relative">
+                    <i data-lucide="leaf" class="w-12 h-12 text-green-600"></i>
+                    <i data-lucide="trash-2" class="w-6 h-6 text-blue-500 absolute bottom-6 right-6"></i>
+                </div>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">Cleaner India, <span class="text-green-600">Smarter India</span></h1>
+            <p class="text-lg text-gray-600 max-w-xl mx-auto mb-8">Identify, Report, and Track garbage hotspots in your city instantly.</p>
+            
+            <div class="flex flex-col sm:flex-row gap-4 justify-center mb-10">
+                <button onclick="navigateTo('report')" class="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold shadow-lg shadow-green-200 transition-transform hover:-translate-y-1 flex items-center justify-center gap-2">
+                    <i data-lucide="camera"></i> Report Garbage
+                </button>
+                <button onclick="navigateTo('map')" class="px-8 py-3 bg-white hover:bg-gray-50 text-gray-800 border-2 border-green-600 rounded-xl font-bold flex items-center justify-center gap-2">
+                    <i data-lucide="map"></i> View Hotspots
+                </button>
+            </div>
+
+            <!-- Track Box -->
+            <div class="max-w-md mx-auto bg-white p-6 rounded-2xl shadow-xl border border-gray-100 relative top-4">
+                <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2 justify-center">
+                    <i data-lucide="search" class="text-green-600"></i> Track Complaint
+                </h3>
+                <div class="relative">
+                    <input type="text" id="landingTokenInput" placeholder="Enter Token (e.g. TT-IND-2025-1001)" class="w-full pl-4 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-green-500">
+                    <button onclick="trackFromLanding()" class="absolute right-2 top-2 bottom-2 bg-green-600 text-white px-3 rounded-lg font-bold">Go</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Grid -->
+        <div class="py-16 bg-white px-4">
+            <div class="container mx-auto grid md:grid-cols-3 gap-6">
+                <!-- Feature 1 -->
+                <div class="p-6 bg-green-50 rounded-xl border border-green-100">
+                    <div class="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center text-white mb-4"><i data-lucide="camera"></i></div>
+                    <h3 class="font-bold text-lg mb-2">AI Detection</h3>
+                    <p class="text-sm text-gray-600">Automatically identifies waste type and severity from your photos.</p>
+                </div>
+                <!-- Feature 2 -->
+                <div class="p-6 bg-blue-50 rounded-xl border border-blue-100">
+                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white mb-4"><i data-lucide="map-pin"></i></div>
+                    <h3 class="font-bold text-lg mb-2">Live Heatmaps</h3>
+                    <p class="text-sm text-gray-600">Real-time tracking of high-waste zones across the city.</p>
+                </div>
+                <!-- Feature 3 -->
+                <div class="p-6 bg-orange-50 rounded-xl border border-orange-100">
+                    <div class="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center text-white mb-4"><i data-lucide="users"></i></div>
+                    <h3 class="font-bold text-lg mb-2">Worker Portal</h3>
+                    <p class="text-sm text-gray-600">Dedicated dashboard for municipal workers to update status.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW: REPORT FORM -->
+    <!-- ========================================== -->
+    <section id="view-report" class="view-section hidden-view min-h-screen bg-gray-50">
+        <div class="max-w-md mx-auto bg-white min-h-screen shadow-2xl flex flex-col">
+            <div class="p-4 flex items-center gap-3 border-b">
+                <button onclick="navigateTo('landing')" class="p-2 hover:bg-gray-100 rounded-full"><i data-lucide="arrow-left"></i></button>
+                <h2 class="font-bold text-xl">Report Garbage</h2>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-4 space-y-6">
+                <!-- Image Upload -->
+                <div class="border-2 border-dashed border-green-300 bg-green-50 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-green-100 transition" onclick="document.getElementById('fileInput').click()">
+                    <div id="imagePreviewContainer" class="hidden w-full h-48 mb-2 rounded-lg overflow-hidden relative">
+                        <img id="imagePreview" class="w-full h-full object-cover">
+                        <div id="aiAnalyzing" class="absolute inset-0 bg-black/50 flex items-center justify-center text-white flex-col hidden">
+                            <i data-lucide="loader-2" class="animate-spin mb-2"></i>
+                            <span class="text-xs font-bold">AI Analyzing...</span>
+                        </div>
+                    </div>
+                    <div id="uploadPlaceholder" class="text-center">
+                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-green-600">
+                            <i data-lucide="camera"></i>
+                        </div>
+                        <p class="font-bold text-sm">Tap to Upload Photo</p>
+                    </div>
+                    <input type="file" id="fileInput" class="hidden" accept="image/*" onchange="handleImageUpload(this)">
+                </div>
+
+                <!-- Auto Analysis Results -->
+                <div id="aiResults" class="hidden bg-blue-50 p-3 rounded-lg border border-blue-100 text-sm text-blue-800">
+                    <p class="font-bold flex items-center gap-2"><i data-lucide="sparkles"></i> AI Analysis:</p>
+                    <p id="aiText" class="mt-1">Detected: Plastic Waste (Severity: High)</p>
+                </div>
+
+                <!-- Inputs -->
+                <div>
+                    <label class="block text-sm font-bold mb-2">Category</label>
+                    <select id="reportCategory" class="w-full p-3 bg-gray-50 border rounded-lg">
+                        <option value="Roadside Garbage">Roadside Garbage</option>
+                        <option value="Overflowing Dustbin">Overflowing Dustbin</option>
+                        <option value="Construction Waste">Construction Waste</option>
+                        <option value="Plastic Waste">Plastic Waste</option>
+                    </select>
+                </div>
+
+                <!-- Location Simulation -->
+                <div>
+                    <label class="block text-sm font-bold mb-2">Location</label>
+                    <div id="locationBox" class="p-3 bg-gray-50 border rounded-lg flex items-center justify-between">
+                        <span class="text-gray-500 text-sm">Location not detected</span>
+                        <button onclick="detectLocation()" class="text-green-600 font-bold text-sm">Detect GPS</button>
+                    </div>
+                </div>
+
+                <button onclick="submitReport()" class="w-full py-4 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-green-700 mt-4">
+                    Submit Report
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW: MAP HOTSPOTS -->
+    <!-- ========================================== -->
+    <section id="view-map" class="view-section hidden-view h-[calc(100vh-60px)] flex flex-col md:flex-row">
+        <!-- Map Container -->
+        <div class="flex-1 bg-gray-200 relative order-1 md:order-1 h-[50vh] md:h-full">
+            <div id="hotspotMap"></div>
+            <!-- Legend Overlay -->
+            <div class="absolute bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg z-[400] text-xs">
+                <div class="font-bold mb-2">Severity</div>
+                <div class="flex items-center gap-2 mb-1"><span class="w-3 h-3 rounded-full bg-red-500"></span> High</div>
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-yellow-400"></span> Medium</div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="w-full md:w-80 bg-white border-l shadow-xl z-10 flex flex-col order-2 md:order-2 h-[50vh] md:h-full">
+            <div class="p-4 border-b bg-gray-50">
+                <button onclick="navigateTo('landing')" class="mb-3 text-sm text-gray-500 flex items-center gap-1 hover:text-black">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
+                </button>
+                <h2 class="font-bold text-lg">Hotspots</h2>
+                <div class="flex gap-2 mt-2 overflow-x-auto no-scrollbar">
+                    <button class="px-3 py-1 bg-green-600 text-white text-xs rounded-full">All</button>
+                    <button class="px-3 py-1 bg-white border text-xs rounded-full">Delhi</button>
+                    <button class="px-3 py-1 bg-white border text-xs rounded-full">Mumbai</button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-2" id="hotspotList">
+                <!-- List items injected by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW: TRACKING PAGE -->
+    <!-- ========================================== -->
+    <section id="view-track" class="view-section hidden-view min-h-screen bg-gray-50 pb-10">
+        <div class="bg-white border-b sticky top-0 z-30 px-4 py-3">
+            <div class="container mx-auto flex items-center gap-4">
+                <button onclick="navigateTo('landing')" class="p-2 hover:bg-gray-100 rounded-full"><i data-lucide="arrow-left"></i></button>
+                <div>
+                    <h1 class="font-bold text-gray-900">Track Complaint</h1>
+                    <p class="text-xs text-gray-500 font-mono" id="trackTokenDisplay">TT-IND-2025-XXXX</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mx-auto px-4 py-6 max-w-4xl">
+            <!-- Timeline -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border mb-6">
+                <h2 class="font-bold mb-6 border-b pb-2">Status Timeline</h2>
+                <div class="flex flex-col md:flex-row justify-between relative gap-6 md:gap-0" id="timelineContainer">
+                    <!-- Steps injected by JS -->
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Details -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border">
+                    <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="map-pin" class="text-green-600"></i> Location</h3>
+                    <div class="h-48 bg-gray-200 rounded-xl mb-4 overflow-hidden relative">
+                         <div id="trackingMap"></div>
+                    </div>
+                    <p class="font-bold text-gray-900" id="trackAddress">Loading...</p>
+                    <p class="text-xs text-gray-500" id="trackCity">...</p>
+                </div>
+
+                <!-- Photos -->
+                <div class="space-y-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border">
+                        <div class="flex justify-between mb-2">
+                            <span class="font-bold text-sm text-red-600">Before</span>
+                            <span class="text-xs text-gray-400" id="trackDate">...</span>
+                        </div>
+                        <img id="trackImageBefore" src="" class="w-full h-40 object-cover rounded-lg bg-gray-100">
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border">
+                        <div class="flex justify-between mb-2">
+                            <span class="font-bold text-sm text-green-600">After</span>
+                            <span class="text-xs text-green-600 font-bold hidden" id="trackResolvedBadge"><i data-lucide="check-circle" class="w-3 h-3 inline"></i> Verified</span>
+                        </div>
+                        <div id="trackImageAfterContainer" class="w-full h-40 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                            Waiting for resolution...
+                        </div>
+                        <img id="trackImageAfter" src="" class="w-full h-40 object-cover rounded-lg hidden">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW: WORKER PORTAL -->
+    <!-- ========================================== -->
+    <section id="view-worker" class="view-section hidden-view min-h-screen bg-gray-50">
+        <!-- Login Screen -->
+        <div id="workerLogin" class="flex flex-col items-center justify-center min-h-screen p-4">
+            <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="hard-hat" class="w-8 h-8 text-orange-600"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold">Worker Portal</h2>
+                </div>
+                <input type="text" id="workerIdInput" placeholder="Worker ID (e.g. W-101)" class="w-full p-3 border rounded-xl mb-4">
+                <button onclick="workerLogin()" class="w-full py-3 bg-orange-600 text-white rounded-xl font-bold">Login</button>
+                <button onclick="navigateTo('landing')" class="w-full py-3 mt-2 text-gray-400 text-sm">Back</button>
+            </div>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div id="workerDashboard" class="hidden">
+            <header class="bg-orange-600 text-white p-4 sticky top-0 z-50 flex justify-between items-center">
+                <div class="font-bold">Worker Panel <span class="text-xs font-normal opacity-75 block">ID: W-101</span></div>
+                <button onclick="logoutWorker()"><i data-lucide="log-out"></i></button>
+            </header>
+            <div class="p-4 max-w-lg mx-auto space-y-4" id="workerTaskList">
+                <!-- Tasks injected -->
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VIEW: ADMIN DASHBOARD -->
+    <!-- ========================================== -->
+    <section id="view-admin" class="view-section hidden-view min-h-screen bg-slate-100 flex flex-col md:flex-row">
+        <!-- Sidebar -->
+        <aside class="w-full md:w-64 bg-slate-900 text-white p-6 flex-shrink-0">
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-8 h-8 bg-green-500 rounded flex items-center justify-center font-bold">A</div>
+                <div>Admin Panel</div>
+            </div>
+            <nav class="space-y-2">
+                <button class="w-full text-left px-4 py-3 bg-slate-800 rounded-lg text-sm font-bold">Dashboard</button>
+                <button onclick="navigateTo('map')" class="w-full text-left px-4 py-3 hover:bg-slate-800 rounded-lg text-sm text-slate-400">Live Map</button>
+                <button onclick="navigateTo('landing')" class="w-full text-left px-4 py-3 hover:bg-slate-800 rounded-lg text-sm text-slate-400 mt-10">Logout</button>
+            </nav>
+        </aside>
+
+        <!-- Content -->
+        <main class="flex-1 p-6 overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-6 text-slate-800">City Overview</h2>
+            
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-4 rounded-xl shadow-sm">
+                    <p class="text-xs text-gray-500">Total Reports</p>
+                    <h3 class="text-2xl font-bold" id="adminTotal">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm">
+                    <p class="text-xs text-gray-500">Resolved</p>
+                    <h3 class="text-2xl font-bold text-green-600" id="adminResolved">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm">
+                    <p class="text-xs text-gray-500">Pending</p>
+                    <h3 class="text-2xl font-bold text-orange-500" id="adminPending">0</h3>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm">
+                    <p class="text-xs text-gray-500">Avg Time</p>
+                    <h3 class="text-2xl font-bold">4.2h</h3>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h4 class="font-bold mb-4">Reports per Category</h4>
+                    <canvas id="categoryChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h4 class="font-bold mb-4">Weekly Trend</h4>
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- FOOTER LINKS (On Landing) -->
+    <!-- ========================================== -->
+    <footer id="mainFooter" class="bg-slate-900 text-white py-10 mt-auto">
+        <div class="container mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
+            <div>
+                <h4 class="font-bold mb-4">TrashTracker</h4>
+                <p class="text-slate-400 text-xs">A civic engagement platform for a cleaner India.</p>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4">Portals</h4>
+                <ul class="space-y-2 text-slate-400">
+                    <li><button onclick="navigateTo('worker')" class="hover:text-white">Worker Login</button></li>
+                    <li><button onclick="navigateTo('admin')" class="hover:text-white">Admin Panel</button></li>
+                </ul>
+            </div>
+        </div>
+        <div class="text-center text-xs text-slate-600 mt-10">© 2025 TrashTracker India</div>
+    </footer>
+
+    <!-- SUCCESS MODAL -->
+    <div id="successModal" class="fixed inset-0 bg-black/80 z-[100] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full overflow-hidden animate-fade-in">
+            <div class="bg-green-600 p-6 text-center text-white">
+                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
+                    <i data-lucide="check-circle" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-2xl font-bold">Submitted!</h3>
+            </div>
+            <div class="p-6 text-center">
+                <p class="text-sm text-gray-500 mb-2">Your Tracking Token</p>
+                <div class="bg-gray-100 p-3 rounded-lg border-dashed border-2 border-gray-300 font-mono font-bold text-lg text-gray-800 mb-4" id="generatedToken">
+                    ...
+                </div>
+                <button onclick="closeModal()" class="w-full py-3 bg-gray-900 text-white rounded-xl font-bold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // 1. DATA STATE
+        let reports = [
+            { id: '1', token: 'TT-IND-2025-1001', category: 'Overflowing Dustbin', severity: 'high', lat: 28.6304, lng: 77.2177, status: 'PENDING', image: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&q=80&w=400', date: new Date().getTime() - 86400000, address: 'Connaught Place, Delhi' },
+            { id: '2', token: 'TT-IND-2025-1002', category: 'Roadside Garbage', severity: 'medium', lat: 19.0760, lng: 72.8777, status: 'RESOLVED', image: 'https://images.unsplash.com/photo-1605600659908-0ef719419d43?auto=format&fit=crop&q=80&w=400', resolvedImage: 'https://images.unsplash.com/photo-1528323273322-d81458248d40?auto=format&fit=crop&q=80&w=400', date: new Date().getTime() - 172800000, address: 'Andheri East, Mumbai' }
+        ];
+
+        // 2. NAVIGATION
+        function navigateTo(viewId) {
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden-view'));
+            // Show target
+            document.getElementById(`view-${viewId}`).classList.remove('hidden-view');
+            
+            // Footer Logic
+            const footer = document.getElementById('mainFooter');
+            if (viewId === 'landing') footer.classList.remove('hidden-view');
+            else footer.classList.add('hidden-view');
+
+            // View Specific Init
+            if (viewId === 'map') initHotspotMap();
+            if (viewId === 'admin') initAdminDashboard();
+            if (viewId === 'report') resetReportForm();
+
+            // Re-init Icons
+            lucide.createIcons();
+            window.scrollTo(0,0);
+        }
+
+        // 3. REPORTING FLOW
+        let reportImage = null;
+        let reportLocation = null;
+
+        function handleImageUpload(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    reportImage = e.target.result;
+                    document.getElementById('imagePreview').src = reportImage;
+                    document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                    document.getElementById('uploadPlaceholder').classList.add('hidden');
+                    
+                    // Simulate AI Analysis
+                    document.getElementById('aiAnalyzing').classList.remove('hidden');
+                    setTimeout(() => {
+                        document.getElementById('aiAnalyzing').classList.add('hidden');
+                        document.getElementById('aiResults').classList.remove('hidden');
+                    }, 2000);
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function detectLocation() {
+            const btn = document.querySelector('#locationBox button');
+            btn.innerHTML = 'Scanning GPS...';
+            setTimeout(() => {
+                reportLocation = { lat: 28.6139, lng: 77.2090, address: "Detected: 124, Market Rd, Delhi" }; // Mock
+                document.getElementById('locationBox').innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <div class="bg-green-100 p-2 rounded-full text-green-600"><i data-lucide="map-pin" width="16"></i></div>
+                        <div>
+                            <div class="font-bold text-sm">GPS Locked</div>
+                            <div class="text-xs text-gray-500">${reportLocation.address}</div>
+                        </div>
+                    </div>
+                `;
+                lucide.createIcons();
+            }, 1500);
+        }
+
+        function submitReport() {
+            if (!reportImage) return alert("Please upload an image");
+            
+            const token = `TT-IND-2025-${Math.floor(1000 + Math.random() * 9000)}`;
+            const newReport = {
+                id: Date.now().toString(),
+                token: token,
+                category: document.getElementById('reportCategory').value,
+                severity: 'medium',
+                lat: reportLocation ? reportLocation.lat : 20.5937,
+                lng: reportLocation ? reportLocation.lng : 78.9629,
+                status: 'PENDING',
+                image: reportImage,
+                date: Date.now(),
+                address: reportLocation ? reportLocation.address : 'Unknown Location'
+            };
+
+            reports.unshift(newReport);
+            
+            // Show Modal
+            document.getElementById('generatedToken').innerText = token;
+            document.getElementById('successModal').classList.remove('hidden');
+            document.getElementById('successModal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('successModal').classList.add('hidden');
+            document.getElementById('successModal').classList.remove('flex');
+            navigateTo('landing');
+        }
+
+        function resetReportForm() {
+            reportImage = null;
+            reportLocation = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('imagePreviewContainer').classList.add('hidden');
+            document.getElementById('uploadPlaceholder').classList.remove('hidden');
+            document.getElementById('aiResults').classList.add('hidden');
+            document.getElementById('locationBox').innerHTML = `<span class="text-gray-500 text-sm">Location not detected</span><button onclick="detectLocation()" class="text-green-600 font-bold text-sm">Detect GPS</button>`;
+        }
+
+        // 4. MAP LOGIC (Leaflet)
+        let mapInstance = null;
+        
+        function initHotspotMap() {
+            setTimeout(() => {
+                if (mapInstance) {
+                    mapInstance.invalidateSize();
+                    return;
+                }
+                
+                // Init Map
+                mapInstance = L.map('hotspotMap', { attributionControl: false }).setView([20.5937, 78.9629], 5);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance);
+
+                // Render Sidebar List & Pins
+                const listContainer = document.getElementById('hotspotList');
+                listContainer.innerHTML = '';
+
+                reports.forEach(r => {
+                    // Marker
+                    const color = r.severity === 'high' ? 'red' : 'orange';
+                    const marker = L.circleMarker([r.lat, r.lng], {
+                        radius: 8,
+                        fillColor: color,
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(mapInstance);
+                    marker.bindPopup(`<b>${r.category}</b><br>${r.address}`);
+
+                    // Sidebar Item
+                    const item = document.createElement('div');
+                    item.className = 'p-3 bg-white border border-gray-100 rounded-lg mb-2 shadow-sm cursor-pointer hover:border-green-500';
+                    item.innerHTML = `
+                        <div class="flex justify-between">
+                            <h4 class="font-bold text-sm">${r.category}</h4>
+                            <span class="text-[10px] bg-${color}-100 text-${color}-600 px-2 py-0.5 rounded">${r.status}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 truncate">${r.address}</p>
+                    `;
+                    item.onclick = () => {
+                        mapInstance.setView([r.lat, r.lng], 14);
+                        if(window.innerWidth < 768) document.getElementById('hotspotMap').scrollIntoView();
+                    };
+                    listContainer.appendChild(item);
+                });
+            }, 200);
+        }
+
+        // 5. TRACKING LOGIC
+        let trackingMapInstance = null;
+
+        function trackFromLanding() {
+            const token = document.getElementById('landingTokenInput').value;
+            if(!token) return alert("Enter a token");
+            loadTrackingData(token);
+        }
+
+        function loadTrackingData(token) {
+            const report = reports.find(r => r.token === token) || reports[0]; // Fallback to first for demo
+            
+            document.getElementById('trackTokenDisplay').innerText = report.token;
+            document.getElementById('trackAddress').innerText = report.address;
+            document.getElementById('trackDate').innerText = new Date(report.date).toLocaleDateString();
+            document.getElementById('trackImageBefore').src = report.image;
+            
+            const afterContainer = document.getElementById('trackImageAfterContainer');
+            const afterImg = document.getElementById('trackImageAfter');
+            const badge = document.getElementById('trackResolvedBadge');
+
+            if (report.status === 'RESOLVED') {
+                afterContainer.classList.add('hidden');
+                afterImg.src = report.resolvedImage;
+                afterImg.classList.remove('hidden');
+                badge.classList.remove('hidden');
+            } else {
+                afterContainer.classList.remove('hidden');
+                afterImg.classList.add('hidden');
+                badge.classList.add('hidden');
+            }
+
+            // Timeline HTML
+            const stages = ['Submitted', 'Assigned', 'Worker Reached', 'Cleaned', 'Verified'];
+            let currentStageIdx = report.status === 'PENDING' ? 0 : report.status === 'RESOLVED' ? 4 : 2;
+            
+            const timelineHTML = stages.map((stage, i) => {
+                const active = i <= currentStageIdx;
+                const color = active ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-400';
+                return `
+                    <div class="flex flex-col items-center flex-1 relative z-10">
+                        <div class="w-8 h-8 rounded-full ${color} flex items-center justify-center font-bold text-xs mb-1 border-2 border-white shadow-sm">
+                            ${i+1}
+                        </div>
+                        <div class="text-[10px] font-bold ${active ? 'text-gray-900' : 'text-gray-400'}">${stage}</div>
+                        ${i < 4 ? `<div class="hidden md:block absolute top-4 left-1/2 w-full h-0.5 -z-10 ${i < currentStageIdx ? 'bg-green-500' : 'bg-gray-200'}"></div>` : ''}
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('timelineContainer').innerHTML = timelineHTML;
+
+            navigateTo('track');
+            
+            // Init Mini Map
+            setTimeout(() => {
+                if(trackingMapInstance) trackingMapInstance.remove();
+                trackingMapInstance = L.map('trackingMap', { attributionControl: false, zoomControl: false }).setView([report.lat, report.lng], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(trackingMapInstance);
+                L.marker([report.lat, report.lng]).addTo(trackingMapInstance);
+            }, 300);
+        }
+
+        // 6. WORKER PORTAL
+        function workerLogin() {
+            const id = document.getElementById('workerIdInput').value;
+            if(id.length > 2) {
+                document.getElementById('workerLogin').classList.add('hidden');
+                document.getElementById('workerDashboard').classList.remove('hidden');
+                renderWorkerTasks();
+            } else {
+                alert("Enter ID");
+            }
+        }
+        
+        function logoutWorker() {
+            document.getElementById('workerLogin').classList.remove('hidden');
+            document.getElementById('workerDashboard').classList.add('hidden');
+            document.getElementById('workerIdInput').value = '';
+        }
+
+        function renderWorkerTasks() {
+            const container = document.getElementById('workerTaskList');
+            container.innerHTML = '';
+            const pending = reports.filter(r => r.status !== 'RESOLVED');
+            
+            if(pending.length === 0) container.innerHTML = '<div class="text-center text-gray-400 mt-10">No pending tasks</div>';
+
+            pending.forEach(r => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-xl shadow-sm border border-orange-100';
+                card.innerHTML = `
+                    <div class="flex gap-4">
+                        <img src="${r.image}" class="w-20 h-20 rounded-lg object-cover bg-gray-100">
+                        <div class="flex-1">
+                            <div class="flex justify-between items-start mb-1">
+                                <h4 class="font-bold text-sm">${r.category}</h4>
+                                <span class="bg-yellow-100 text-yellow-700 text-[10px] px-2 py-0.5 rounded font-bold">PENDING</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mb-2">${r.address}</p>
+                            <button onclick="resolveTask('${r.id}')" class="w-full py-2 bg-green-600 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2">
+                                <i data-lucide="check-square" width="14"></i> Mark Cleaned
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function resolveTask(id) {
+            const r = reports.find(x => x.id === id);
+            if(r) {
+                r.status = 'RESOLVED';
+                r.resolvedImage = 'https://images.unsplash.com/photo-1584464366827-31f0e4b8682e?auto=format&fit=crop&q=80&w=400'; // Mock After Image
+                alert("Task Marked Completed!");
+                renderWorkerTasks();
+            }
+        }
+
+        // 7. ADMIN DASHBOARD
+        let categoryChartInstance = null;
+        let trendChartInstance = null;
+
+        function initAdminDashboard() {
+            // Stats
+            document.getElementById('adminTotal').innerText = reports.length;
+            document.getElementById('adminResolved').innerText = reports.filter(r => r.status === 'RESOLVED').length;
+            document.getElementById('adminPending').innerText = reports.filter(r => r.status !== 'RESOLVED').length;
+
+            // Destroy old charts if existing
+            if(categoryChartInstance) categoryChartInstance.destroy();
+            if(trendChartInstance) trendChartInstance.destroy();
+
+            // Category Chart
+            const ctx1 = document.getElementById('categoryChart').getContext('2d');
+            categoryChartInstance = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Plastic', 'Roadside', 'Construction'],
+                    datasets: [{
+                        data: [12, 19, 3],
+                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B']
+                    }]
+                }
+            });
+
+            // Trend Chart
+            const ctx2 = document.getElementById('trendChart').getContext('2d');
+            trendChartInstance = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                    datasets: [{
+                        label: 'Reports',
+                        data: [5, 9, 3, 12, 8],
+                        borderColor: '#10B981',
+                        tension: 0.4
+                    }]
+                }
+            });
+        }
+
+        // INIT
+        lucide.createIcons();
+    </script>
+</body>
+</html>
